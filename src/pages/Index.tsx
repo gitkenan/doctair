@@ -1,17 +1,28 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MicroscopeIcon, BrainCircuit, History } from "lucide-react";
+import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 
 const Index = () => {
   const navigate = useNavigate();
+  const session = useSession();
+  const supabase = useSupabaseClient();
   const [showAuthMessage, setShowAuthMessage] = useState(false);
 
   const handleGetStarted = () => {
-    // When we integrate Supabase, this will navigate to the dashboard if logged in
-    // For now, show the connect to Supabase message
-    setShowAuthMessage(true);
+    if (session) {
+      // If already logged in, navigate to dashboard
+      navigate('/dashboard');
+    } else {
+      // Handle login - replace this with actual Supabase auth
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard'
+        }
+      });
+    }
   };
 
   return (
@@ -144,7 +155,7 @@ const Index = () => {
           </div>
           <div className="mt-8 text-center text-gray-500 text-sm">
             <p>Disclaimer: This tool is not a substitute for professional medical advice, diagnosis, or treatment.</p>
-            <p className="mt-2">© {new Date().getFullYear()} Medical AI Insight Viewer. All rights reserved.</p>
+            <p className="mt-2"> {new Date().getFullYear()} Medical AI Insight Viewer. All rights reserved.</p>
           </div>
         </div>
       </footer>
