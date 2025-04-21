@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MicroscopeIcon, BrainCircuit, History } from "lucide-react";
@@ -9,20 +9,41 @@ const Index = () => {
   const session = useSession();
   const supabase = useSupabaseClient();
   const [showAuthMessage, setShowAuthMessage] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGetStarted = () => {
+  // Check if we're coming back from an auth redirect
+  useEffect(() => {
+    const handleAuthRedirect = async () => {
+      setIsLoading(true);
+      // Check if we have hash parameters from an auth redirect
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      
+      // If session exists or we detect access_token in the URL, redirect to dashboard
+      if (session || accessToken) {
+        navigate('/dashboard');
+      }
+      setIsLoading(false);
+    };
+
+    handleAuthRedirect();
+  }, [session, navigate]);
+
+  const handleGetStarted = async () => {
+    setIsLoading(true);
     if (session) {
       // If already logged in, navigate to dashboard
       navigate('/dashboard');
     } else {
       // Handle login - replace this with actual Supabase auth
-      supabase.auth.signInWithOAuth({
+      await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin + '/dashboard'
         }
       });
     }
+    setIsLoading(false);
   };
 
   return (
@@ -41,13 +62,15 @@ const Index = () => {
             size="lg" 
             onClick={handleGetStarted}
             className="bg-blue-600 hover:bg-blue-700"
+            disabled={isLoading}
           >
-            Get Started
+            {isLoading ? 'Loading...' : 'Get Started'}
           </Button>
           <Button 
             size="lg" 
             variant="outline"
             onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+            disabled={isLoading}
           >
             Learn More
           </Button>
