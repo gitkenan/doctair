@@ -1,54 +1,46 @@
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock } from "lucide-react";
-import type { AnalysisResultType } from "@/types";
+import type { UserHistoryItem } from "@/types";
 
 const HistoryList = () => {
-  // In production with Supabase, this would fetch from the database
-  // For now, we'll show a message about connecting to Supabase
-  
+  const [history, setHistory] = useState<UserHistoryItem[]>([]);
+  const supabase = useSupabaseClient();
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const { data, error } = await supabase
+        .from('users_history')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setHistory(data);
+      }
+    };
+
+    fetchHistory();
+  }, [supabase]);
+
   return (
     <div className="space-y-4">
-      <div className="p-8 text-center bg-gray-50 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Connect to Supabase</h3>
-        <p className="text-gray-600 mb-4">
-          To enable history functionality, please connect your project to Supabase using the green button 
-          in the top-right corner of the Lovable interface.
-        </p>
-        <p className="text-sm text-gray-500">
-          Once connected, your analysis history will be securely stored and displayed here.
-        </p>
-      </div>
-      
-      {/* Mock history items for design preview - these would come from Supabase in production */}
-      <div className="opacity-50 pointer-events-none">
-        <p className="text-sm text-gray-500 mb-2">Preview of history functionality:</p>
-        
-        <div className="space-y-4">
-          <HistoryItem 
-            result={{
-              description: "Chest X-ray showing clear lung fields with no evidence of consolidation.",
-              diagnosis: "Normal chest X-ray with no acute findings.",
-              extra_comments: "No follow-up needed at this time.",
-              timestamp: new Date().toISOString()
-            }}
-            imageType="Chest X-ray"
-          />
-          
-          <HistoryItem 
-            result={{
-              description: "Brain MRI showing normal brain parenchyma without evidence of mass, hemorrhage, or infarct.",
-              diagnosis: "Normal brain MRI.",
-              extra_comments: "Recommend clinical correlation with patient symptoms.",
-              timestamp: new Date(Date.now() - 86400000).toISOString()
-            }}
-            imageType="Brain MRI"
-          />
+      {history.length === 0 ? (
+        <div className="p-8 text-center bg-gray-50 rounded-lg border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No History Yet</h3>
+          <p className="text-gray-600">
+            Your analysis history will appear here once you analyze your first image.
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-4">
+          {history.map((item) => (
+            <HistoryItem key={item.id} {...item} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

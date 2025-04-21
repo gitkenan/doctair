@@ -2,15 +2,24 @@
 import { Button } from "@/components/ui/button";
 import { MicroscopeIcon, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { toast } from "@/components/ui/use-toast";
 
 const Header = () => {
   const navigate = useNavigate();
+  const supabase = useSupabaseClient();
   
-  // This would handle logout when we integrate with Supabase
-  const handleLogout = () => {
-    // In a real implementation, this would sign out the user from Supabase
-    // For now, just navigate back to the home page
-    navigate("/");
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      navigate("/");
+    }
   };
   
   return (
