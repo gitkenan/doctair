@@ -1,10 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock } from "lucide-react";
-import type { UserHistoryItem } from "@/types";
+import type { UserHistoryItem, AnalysisResultType } from "@/types";
 
 const HistoryList = () => {
   const [history, setHistory] = useState<UserHistoryItem[]>([]);
