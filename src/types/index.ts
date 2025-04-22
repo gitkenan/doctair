@@ -1,8 +1,5 @@
-
 export interface AnalysisResultType {
-  description: string;
-  diagnosis: string;
-  extra_comments: string;
+  content: string;
   timestamp: string;
 }
 

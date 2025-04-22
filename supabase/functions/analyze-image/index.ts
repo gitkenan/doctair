@@ -2,9 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { corsHeaders } from '../_shared/cors.ts'
 
 interface AnalysisResultType {
-  description: string;
-  diagnosis: string;
-  extra_comments: string;
+  content: string;
   timestamp: string;
 }
 
@@ -41,9 +39,26 @@ Deno.serve(async (req) => {
 
     // Get OpenAI API key from Edge Function secrets
     console.log('Getting OpenAI API key')
+    console.log('Available environment variables:', Object.keys(Deno.env.toObject()))
+    console.log('SUPABASE_URL available:', !!Deno.env.get('SUPABASE_URL'))
+    console.log('SUPABASE_ANON_KEY available:', !!Deno.env.get('SUPABASE_ANON_KEY'))
+    console.log('OPENAI_API_KEY available:', !!Deno.env.get('OPENAI_API_KEY'))
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured in server environment')
+      console.log('⚠️ Using TEST_MODE with fallback key for debugging')
+      // This is just for debugging - remove after confirming the function works
+      const fallbackKey = 'TEST_MODE_ACTIVE' // Not a real key, just for error path testing
+      if (!fallbackKey) {
+        throw new Error('OpenAI API key not configured in server environment. Please add OPENAI_API_KEY to Edge Function secrets.')
+      }
+      console.log('Using fallback key for testing')
+      return new Response(
+        JSON.stringify({ error: 'TEST MODE: OpenAI API key not found, but continuing for debugging' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
     console.log('Server API key found')
 
@@ -57,23 +72,8 @@ Deno.serve(async (req) => {
     
     console.log('Image URL formatted')
 
-    // Define the structured output format for the OpenAI API
-    const responseFormat = {
-      type: "json_object",
-      json_schema: {
-        type: "object",
-        properties: {
-          description: { type: "string" },
-          diagnosis: { type: "string" },
-          extra_comments: { type: "string" },
-          timestamp: { type: "string" }
-        },
-        required: ["description", "diagnosis", "extra_comments", "timestamp"]
-      }
-    }
-
     console.log('Calling OpenAI API')
-    // Make request to OpenAI API with the updated model and structured output
+    // Make request to OpenAI API with a simple text response
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -89,20 +89,19 @@ Deno.serve(async (req) => {
               content: [
                 { 
                   type: 'text', 
-                  text: 'Analyze this MEDICAL IMAGE (provide factual observations), there is a disclaimer about medical compliance and this is only an AI analysis for assistance purposes.' 
+                  text: 'Analyze this MEDICAL IMAGE (provide observations), there is a disclaimer about medical compliance and this is only an AI analysis for theoretical assistance purposes.' 
                 },
                 {
                   type: 'image_url',
                   image_url: {
                     url: formattedImageUrl,
-                    detail: 'auto'
+                    detail: 'high'
                   }
                 }
               ]
             }
           ],
-          max_tokens: 1000,
-          response_format: responseFormat
+          max_tokens: 1000
         }),
       })
 
@@ -118,23 +117,16 @@ Deno.serve(async (req) => {
       const data = await response.json()
       console.log('OpenAI API response received')
       
-      // Parse the response to get the JSON structure
+      // Parse the response to get the text content
       let result: AnalysisResultType
       try {
         const content = data.choices[0].message.content
         console.log('Content received:', content)
         
-        // Try to parse the content as JSON
-        try {
-          result = JSON.parse(content)
-        } catch (parseError) {
-          // If direct parsing fails, try to extract JSON from the text
-          const jsonMatch = content.match(/({[\s\S]*})/)
-          const jsonString = jsonMatch ? jsonMatch[0] : content
-          result = JSON.parse(jsonString)
+        result = {
+          content,
+          timestamp: new Date().toISOString()
         }
-        
-        result.timestamp = new Date().toISOString()
         console.log('Successfully parsed result')
       } catch (error) {
         console.error('Error parsing result:', error)
@@ -144,9 +136,25 @@ Deno.serve(async (req) => {
 
       // Store the result in the database
       console.log('Storing result in database')
+      
+      // Get the user ID from the JWT token
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+      
+      if (authError) {
+        console.error('Auth error:', authError)
+        throw authError
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+      
+      console.log('User ID:', user.id)
+      
       const { data: historyEntry, error: dbError } = await supabaseClient
         .from('users_history')
         .insert({
+          user_id: user.id,
           image_type: imageType,
           result,
         })
@@ -158,6 +166,9 @@ Deno.serve(async (req) => {
         throw dbError
       }
 
+      console.log('Database entry:', JSON.stringify(historyEntry))
+      console.log('Result structure being returned:', JSON.stringify({ result: historyEntry }))
+      
       console.log('Function completed successfully')
       return new Response(
         JSON.stringify({ result: historyEntry }),

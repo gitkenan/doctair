@@ -43,7 +43,31 @@ export const analyzeImage = async (
 
     const responseData = await response.json();
     console.log('Response received successfully');
-    return responseData.result;
+    console.log('Response data:', JSON.stringify(responseData));
+    
+    // The result field is a JSON string that needs to be parsed
+    let parsedResult;
+    if (responseData.result && responseData.result.result) {
+      try {
+        // Parse the nested JSON string in the result field
+        if (typeof responseData.result.result === 'string') {
+          parsedResult = JSON.parse(responseData.result.result);
+          console.log('Parsed result:', parsedResult);
+        } else {
+          parsedResult = responseData.result.result;
+          console.log('Result already parsed:', parsedResult);
+        }
+      } catch (parseError) {
+        console.error('Error parsing result JSON:', parseError);
+        // If parsing fails, use the raw string
+        parsedResult = { content: responseData.result.result };
+      }
+    } else {
+      console.error('Unexpected response structure:', responseData);
+      throw new Error('Invalid response structure from server');
+    }
+    
+    return parsedResult;
   } catch (error) {
     console.error('Error analyzing image:', error);
     throw error;

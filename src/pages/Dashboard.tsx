@@ -48,6 +48,10 @@ const Dashboard = () => {
         selectedImage.type || "unknown"
       );
       
+      console.log('Analysis result received:', result);
+      console.log('Result type:', typeof result);
+      console.log('Result structure:', JSON.stringify(result));
+      
       setAnalysisResult(result);
       
       toast({
