@@ -19,15 +19,15 @@ const Index = () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       
-      // If session exists or we detect access_token in the URL, redirect to dashboard
-      if (session || accessToken) {
+      // If we detect access_token in the URL, redirect to dashboard
+      if (accessToken) {
         navigate('/dashboard');
       }
       setIsLoading(false);
     };
 
     handleAuthRedirect();
-  }, [session, navigate]);
+  }, [navigate]);
 
   const handleGetStarted = async () => {
     setIsLoading(true);

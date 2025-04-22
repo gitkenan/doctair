@@ -9,6 +9,7 @@ import HistoryList from "@/components/HistoryList";
 import Header from "@/components/Header";
 import type { AnalysisResultType } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { analyzeImage as analyzeImageApi } from "@/utils/openai";
 
 const Dashboard = () => {
   const [apiKey, setApiKey] = useState<string>("");
@@ -61,23 +62,14 @@ const Dashboard = () => {
     setIsAnalyzing(true);
 
     try {
-      // In a real implementation, this would be a Supabase Edge Function to keep API key secure
-      // For now, we'll just mock a successful response
+      // Call the Supabase Edge Function to analyze the image
+      const result = await analyzeImageApi(
+        imagePreview as string,
+        selectedImage.type || "unknown"
+      );
       
-      // Mock waiting for API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      setAnalysisResult(result);
       
-      // Mock result - in production this would come from the OpenAI API
-      const mockResult: AnalysisResultType = {
-        description: "Chest X-ray showing clear lung fields with no evidence of consolidation, effusion, or pneumothorax. The cardiac silhouette appears normal in size. No bony abnormalities are identified.",
-        diagnosis: "Normal chest X-ray with no acute cardiopulmonary findings.",
-        extra_comments: "Recommend following up with a pulmonologist for any persistent respiratory symptoms despite normal radiographic findings.",
-        timestamp: new Date().toISOString()
-      };
-      
-      setAnalysisResult(mockResult);
-      
-      // In production with Supabase, we would save this to the database here
       toast({
         title: "Analysis Complete",
         description: "Image has been successfully analyzed.",

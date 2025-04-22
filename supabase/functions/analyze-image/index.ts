@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -15,8 +14,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { imageBase64, imageType } = await req.json()
+    console.log('Function started')
+    const body = await req.json()
+    console.log('Request body received')
+    const { imageBase64, imageType } = body
 
+    // Validate inputs
+    if (!imageBase64) {
+      throw new Error('imageBase64 is required')
+    }
+
+    console.log('Creating Supabase client')
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -29,87 +37,126 @@ Deno.serve(async (req) => {
     )
 
     // Get OpenAI API key from Edge Function secrets
+    console.log('Getting OpenAI API key')
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openaiApiKey) {
       throw new Error('OpenAI API key not configured')
     }
+    console.log('API key found')
 
-    const prompt = `
-      Analyze this medical image and provide detailed information in the following JSON structure:
-      {
-        "description": "Detailed description of what you see in the image",
-        "diagnosis": "Potential diagnosis or normal findings",
-        "extra_comments": "Additional insights, recommendations, or observations"
-      }
-      
-      Ensure your response is ONLY valid JSON with these three fields.
-      Be professional, thorough, and medically accurate.
-    `
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-vision-preview',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageBase64,
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: 1000,
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`)
+    // Ensure the imageBase64 is properly formatted as a data URL if it isn't already
+    // If it's already a data URL (starts with data:image), use it as is
+    // Otherwise, assume it's a raw base64 string and format it properly
+    let formattedImageUrl = imageBase64
+    if (!formattedImageUrl.startsWith('data:image')) {
+      formattedImageUrl = `data:image/jpeg;base64,${imageBase64}`
     }
-
-    const data = await response.json()
     
-    // Parse the response to get the JSON structure
-    let result: AnalysisResultType
-    try {
-      const content = data.choices[0].message.content
-      const jsonMatch = content.match(/({[\s\S]*})/);
-      const jsonString = jsonMatch ? jsonMatch[0] : content;
-      result = JSON.parse(jsonString)
-      result.timestamp = new Date().toISOString()
-    } catch (error) {
-      throw new Error('Failed to parse analysis results')
+    console.log('Image URL formatted')
+
+    // Define the structured output format for the OpenAI API
+    const responseFormat = {
+      type: "json_object"
     }
 
-    // Store the result in the database
-    const { data: historyEntry, error: dbError } = await supabaseClient
-      .from('users_history')
-      .insert({
-        image_type: imageType,
-        result,
+    console.log('Calling OpenAI API')
+    // Make request to OpenAI API with the updated model and structured output
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { 
+                  type: 'text', 
+                  text: 'Analyze this medical image and provide detailed information in the following JSON structure: {"description": "detailed description of what you see", "diagnosis": "potential diagnosis or normal findings", "extra_comments": "additional insights or recommendations"}. Ensure your response is ONLY valid JSON with these three fields.' 
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: formattedImageUrl
+                  }
+                }
+              ]
+            }
+          ],
+          max_tokens: 1000,
+          response_format: responseFormat
+        }),
       })
-      .select()
-      .single()
 
-    if (dbError) throw dbError
+      console.log('OpenAI API response status:', response.status)
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('OpenAI API error response:', errorText)
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorText}`)
+      }
 
-    return new Response(
-      JSON.stringify({ result: historyEntry }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    )
+      console.log('Parsing OpenAI API response')
+      const data = await response.json()
+      console.log('OpenAI API response received')
+      
+      // Parse the response to get the JSON structure
+      let result: AnalysisResultType
+      try {
+        const content = data.choices[0].message.content
+        console.log('Content received:', content)
+        
+        // Try to parse the content as JSON
+        try {
+          result = JSON.parse(content)
+        } catch (parseError) {
+          // If direct parsing fails, try to extract JSON from the text
+          const jsonMatch = content.match(/({[\s\S]*})/)
+          const jsonString = jsonMatch ? jsonMatch[0] : content
+          result = JSON.parse(jsonString)
+        }
+        
+        result.timestamp = new Date().toISOString()
+        console.log('Successfully parsed result')
+      } catch (error) {
+        console.error('Error parsing result:', error)
+        console.error('API response:', JSON.stringify(data))
+        throw new Error('Failed to parse analysis results')
+      }
+
+      // Store the result in the database
+      console.log('Storing result in database')
+      const { data: historyEntry, error: dbError } = await supabaseClient
+        .from('users_history')
+        .insert({
+          image_type: imageType,
+          result,
+        })
+        .select()
+        .single()
+
+      if (dbError) {
+        console.error('Database error:', dbError)
+        throw dbError
+      }
+
+      console.log('Function completed successfully')
+      return new Response(
+        JSON.stringify({ result: historyEntry }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        },
+      )
+    } catch (openaiError) {
+      console.error('OpenAI API call error:', openaiError)
+      throw openaiError
+    }
   } catch (error) {
+    console.error('Error in analyze-image function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
