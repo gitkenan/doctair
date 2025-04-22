@@ -28,7 +28,7 @@ const Header = () => {
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2" onClick={() => navigate("/")} style={{cursor: "pointer"}}>
             <MicroscopeIcon className="h-6 w-6 text-blue-600" />
-            <span className="font-bold text-xl">Med AI Insight</span>
+            <span className="font-bold text-xl">Doctair</span>
           </div>
           
           <div className="flex items-center space-x-4">
