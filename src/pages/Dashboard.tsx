@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ApiKeyInput from "@/components/ApiKeyInput";
 import ImageUpload from "@/components/ImageUpload";
 import AnalysisResult from "@/components/AnalysisResult";
 import HistoryList from "@/components/HistoryList";
@@ -12,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { analyzeImage as analyzeImageApi } from "@/utils/openai";
 
 const Dashboard = () => {
-  const [apiKey, setApiKey] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -30,26 +28,7 @@ const Dashboard = () => {
     setAnalysisResult(null);
   };
 
-  const handleApiKeyChange = (key: string) => {
-    setApiKey(key);
-    // Store in localStorage for convenience
-    if (key) {
-      localStorage.setItem("openai_api_key", key);
-    } else {
-      localStorage.removeItem("openai_api_key");
-    }
-  };
-
   const analyzeImage = async () => {
-    if (!apiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenAI API key to proceed.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (!selectedImage) {
       toast({
         title: "Image Required",
@@ -104,18 +83,6 @@ const Dashboard = () => {
             <div className="grid md:grid-cols-2 gap-8">
               <Card>
                 <CardHeader>
-                  <CardTitle>OpenAI API Key</CardTitle>
-                  <CardDescription>
-                    Enter your OpenAI API key to enable image analysis. Your key is used only for processing and is not permanently stored.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ApiKeyInput apiKey={apiKey} onApiKeyChange={handleApiKeyChange} />
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
                   <CardTitle>Upload Medical Image</CardTitle>
                   <CardDescription>
                     Upload an X-ray, MRI, CT scan, or other medical image.
@@ -129,9 +96,9 @@ const Dashboard = () => {
             
             <div className="flex justify-center">
               <Button 
-                disabled={!apiKey || !selectedImage || isAnalyzing} 
+                disabled={!selectedImage || isAnalyzing} 
                 onClick={analyzeImage}
-                className="w-full max-w-md"
+                className="w-full max-w-md mx-auto"
                 size="lg"
               >
                 {isAnalyzing ? "Analyzing..." : "Analyze Image"}

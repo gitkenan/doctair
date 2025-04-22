@@ -138,21 +138,13 @@ const Index = () => {
             <li className="flex gap-4">
               <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0">2</div>
               <div>
-                <h3 className="text-xl font-semibold">Provide your OpenAI API key</h3>
-                <p className="text-gray-600 mt-1">Your API key is used securely and never stored permanently.</p>
-              </div>
-            </li>
-            
-            <li className="flex gap-4">
-              <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0">3</div>
-              <div>
                 <h3 className="text-xl font-semibold">Upload a medical image</h3>
                 <p className="text-gray-600 mt-1">Support for X-rays, MRIs, CT scans, ultrasounds, and more.</p>
               </div>
             </li>
             
             <li className="flex gap-4">
-              <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0">4</div>
+              <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0">3</div>
               <div>
                 <h3 className="text-xl font-semibold">Receive structured analysis</h3>
                 <p className="text-gray-600 mt-1">Get detailed descriptions, potential diagnoses, and additional insights.</p>

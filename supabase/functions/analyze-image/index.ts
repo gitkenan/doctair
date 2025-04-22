@@ -22,10 +22,6 @@ Deno.serve(async (req) => {
     console.log('Image base64 length:', body.imageBase64 ? body.imageBase64.length : 0)
     const { imageBase64, imageType } = body
 
-    // Extract client-provided API key if available
-    const clientApiKey = body.clientApiKey || req.headers.get('X-OpenAI-Key')
-    console.log('Client-provided API key available:', !!clientApiKey)
-
     // Validate inputs
     if (!imageBase64) {
       throw new Error('imageBase64 is required')
@@ -45,18 +41,11 @@ Deno.serve(async (req) => {
 
     // Get OpenAI API key from Edge Function secrets
     console.log('Getting OpenAI API key')
-    let openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    
-    // If server key not available, try using client-provided key
-    if (!openaiApiKey && clientApiKey) {
-      console.log('Using client-provided API key as fallback')
-      openaiApiKey = clientApiKey
-    }
-    
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured - neither from server nor client')
+      throw new Error('OpenAI API key not configured in server environment')
     }
-    console.log('API key source:', openaiApiKey === clientApiKey ? 'client' : 'server')
+    console.log('Server API key found')
 
     // Ensure the imageBase64 is properly formatted as a data URL if it isn't already
     // If it's already a data URL (starts with data:image), use it as is

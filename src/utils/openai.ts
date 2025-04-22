@@ -17,9 +17,6 @@ export const analyzeImage = async (
   }
 
   console.log(`Sending image analysis request (${imageType}, size: ${imageBase64.length} chars)`);
-  // Get locally stored OpenAI API key if available
-  const clientApiKey = localStorage.getItem('openai_api_key');
-  console.log('Client API key available:', !!clientApiKey);
   
   try {
     const response = await fetch(
@@ -32,8 +29,7 @@ export const analyzeImage = async (
         },
         body: JSON.stringify({ 
           imageBase64, 
-          imageType,
-          clientApiKey // Send as part of the body
+          imageType
         }),
       }
     );
