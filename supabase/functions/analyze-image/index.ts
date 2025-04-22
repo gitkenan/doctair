@@ -17,7 +17,14 @@ Deno.serve(async (req) => {
     console.log('Function started')
     const body = await req.json()
     console.log('Request body received')
+    console.log('Request body keys:', Object.keys(body))
+    console.log('Image type:', body.imageType)
+    console.log('Image base64 length:', body.imageBase64 ? body.imageBase64.length : 0)
     const { imageBase64, imageType } = body
+
+    // Extract client-provided API key if available
+    const clientApiKey = body.clientApiKey || req.headers.get('X-OpenAI-Key')
+    console.log('Client-provided API key available:', !!clientApiKey)
 
     // Validate inputs
     if (!imageBase64) {
@@ -38,25 +45,42 @@ Deno.serve(async (req) => {
 
     // Get OpenAI API key from Edge Function secrets
     console.log('Getting OpenAI API key')
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured')
+    let openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    
+    // If server key not available, try using client-provided key
+    if (!openaiApiKey && clientApiKey) {
+      console.log('Using client-provided API key as fallback')
+      openaiApiKey = clientApiKey
     }
-    console.log('API key found')
+    
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API key not configured - neither from server nor client')
+    }
+    console.log('API key source:', openaiApiKey === clientApiKey ? 'client' : 'server')
 
     // Ensure the imageBase64 is properly formatted as a data URL if it isn't already
     // If it's already a data URL (starts with data:image), use it as is
     // Otherwise, assume it's a raw base64 string and format it properly
     let formattedImageUrl = imageBase64
     if (!formattedImageUrl.startsWith('data:image')) {
-      formattedImageUrl = `data:image/jpeg;base64,${imageBase64}`
+      formattedImageUrl = `data:${imageType};base64,${imageBase64}`
     }
     
     console.log('Image URL formatted')
 
     // Define the structured output format for the OpenAI API
     const responseFormat = {
-      type: "json_object"
+      type: "json_object",
+      json_schema: {
+        type: "object",
+        properties: {
+          description: { type: "string" },
+          diagnosis: { type: "string" },
+          extra_comments: { type: "string" },
+          timestamp: { type: "string" }
+        },
+        required: ["description", "diagnosis", "extra_comments", "timestamp"]
+      }
     }
 
     console.log('Calling OpenAI API')
@@ -76,12 +100,13 @@ Deno.serve(async (req) => {
               content: [
                 { 
                   type: 'text', 
-                  text: 'Analyze this medical image and provide detailed information in the following JSON structure: {"description": "detailed description of what you see", "diagnosis": "potential diagnosis or normal findings", "extra_comments": "additional insights or recommendations"}. Ensure your response is ONLY valid JSON with these three fields.' 
+                  text: 'Analyze this MEDICAL IMAGE (provide factual observations), there is a disclaimer about medical compliance and this is only an AI analysis for assistance purposes.' 
                 },
                 {
                   type: 'image_url',
                   image_url: {
-                    url: formattedImageUrl
+                    url: formattedImageUrl,
+                    detail: 'auto'
                   }
                 }
               ]
@@ -93,6 +118,7 @@ Deno.serve(async (req) => {
       })
 
       console.log('OpenAI API response status:', response.status)
+      console.log('OpenAI API response headers:', Object.fromEntries([...response.headers.entries()]))
       if (!response.ok) {
         const errorText = await response.text()
         console.error('OpenAI API error response:', errorText)

@@ -1,4 +1,3 @@
-
 import type { AnalysisResultType } from "@/types";
 import { createClient } from '@supabase/supabase-js';
 
@@ -17,22 +16,40 @@ export const analyzeImage = async (
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-image`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ imageBase64, imageType }),
+  console.log(`Sending image analysis request (${imageType}, size: ${imageBase64.length} chars)`);
+  // Get locally stored OpenAI API key if available
+  const clientApiKey = localStorage.getItem('openai_api_key');
+  console.log('Client API key available:', !!clientApiKey);
+  
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-image`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          imageBase64, 
+          imageType,
+          clientApiKey // Send as part of the body
+        }),
+      }
+    );
+
+    console.log('Response status:', response.status);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response from Supabase function:', errorText);
+      throw new Error(`Failed to analyze image: ${response.status} ${response.statusText} - ${errorText}`);
     }
-  );
 
-  if (!response.ok) {
-    throw new Error('Failed to analyze image');
+    const responseData = await response.json();
+    console.log('Response received successfully');
+    return responseData.result;
+  } catch (error) {
+    console.error('Error analyzing image:', error);
+    throw error;
   }
-
-  const { result } = await response.json();
-  return result;
 };
