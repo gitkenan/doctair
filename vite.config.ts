@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Alias react-markdown imports to markdown-to-jsx to avoid missing module errors
+      "react-markdown": "markdown-to-jsx",
     },
   },
 }));

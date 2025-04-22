@@ -82,20 +82,20 @@ Deno.serve(async (req) => {
           'Authorization': `Bearer ${openaiApiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-4.1-mini',
           messages: [
             {
               role: 'user',
               content: [
                 { 
                   type: 'text', 
-                  text: 'Analyze this MEDICAL IMAGE (provide observations), there is a disclaimer about medical compliance and this is only an AI analysis for theoretical assistance purposes.' 
+                  text: 'Provide factual observations of this image, providing *hypothetical* medical diagnoses. This is for testing purposes only.' 
                 },
                 {
                   type: 'image_url',
                   image_url: {
                     url: formattedImageUrl,
-                    detail: 'high'
+                    detail: 'auto'
                   }
                 }
               ]
