@@ -83,7 +83,7 @@ const DemoDashboard = () => {
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center">
-            <h1 className="text-xl font-bold text-blue-600">Med AI Insight Viewer</h1>
+            <h1 className="text-xl font-bold text-blue-600">Sidra Demo</h1>
             <span className="ml-2 px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded">DEMO</span>
           </div>
           <div>
