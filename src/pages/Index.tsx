@@ -69,6 +69,14 @@ const Index = () => {
           <Button 
             size="lg" 
             variant="outline"
+            onClick={() => navigate('/demo/dashboard')}
+            className="border-blue-600 text-blue-600 hover:bg-blue-50"
+          >
+            Try Demo
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline"
             onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
             disabled={isLoading}
           >

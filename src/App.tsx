@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import DemoDashboard from "./pages/DemoDashboard";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -26,6 +27,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/demo/dashboard" element={<DemoDashboard />} />
             <Route path="/dashboard" element={
               <RequireAuth>
                 <Dashboard />
